@@ -1,0 +1,1616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenTofu Module Workflow with Spacelift Registry - Hands-On Lab</title>
+    <style>
+        :root {
+            --primary: #1B4F72;
+            --secondary: #2E86AB;
+            --accent: #F39C12;
+            --success: #27AE60;
+            --warning: #E74C3C;
+            --light-bg: #EBF5FB;
+            --code-bg: #F4F6F7;
+            --border: #CCCCCC;
+            --text: #333333;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+        }
+        
+        h1 {
+            color: var(--primary);
+            border-bottom: 3px solid var(--secondary);
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        
+        h2 {
+            color: var(--secondary);
+            margin-top: 30px;
+        }
+        
+        h3 {
+            color: var(--primary);
+            margin-top: 25px;
+        }
+        
+        .title-page {
+            text-align: center;
+            padding: 60px 20px;
+            margin-bottom: 40px;
+            background: linear-gradient(135deg, var(--light-bg) 0%, #fff 100%);
+            border-radius: 10px;
+        }
+        
+        .title-page h1 {
+            font-size: 2.5em;
+            border: none;
+            margin: 10px 0;
+        }
+        
+        .title-page .subtitle {
+            font-size: 1.8em;
+            color: var(--primary);
+            margin: 0;
+        }
+        
+        .title-page .workflow {
+            font-size: 1.3em;
+            color: var(--accent);
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        
+        .meta-table {
+            margin: 30px auto;
+            border-collapse: collapse;
+        }
+        
+        .meta-table td {
+            padding: 10px 25px;
+            border: 1px solid var(--border);
+        }
+        
+        .meta-table td:first-child {
+            background: var(--light-bg);
+            font-weight: bold;
+        }
+        
+        .toc {
+            background: var(--light-bg);
+            padding: 25px 35px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        
+        .toc h2 {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        
+        .toc ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .toc li {
+            margin: 8px 0;
+        }
+        
+        .toc a {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        
+        .step-box {
+            background: var(--primary);
+            color: white;
+            padding: 12px 20px;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin: 30px 0 20px 0;
+            border-radius: 5px;
+        }
+        
+        .tip-box {
+            background: #E8F6F3;
+            border-left: 4px solid var(--success);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .tip-box .title {
+            color: var(--success);
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .warning-box {
+            background: #FDEDEC;
+            border-left: 4px solid var(--warning);
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        
+        .warning-box .title {
+            color: var(--warning);
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 15px;
+            overflow-x: auto;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .code-header {
+            background: var(--primary);
+            color: white;
+            padding: 8px 15px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85em;
+            border-radius: 5px 5px 0 0;
+            margin-bottom: -5px;
+        }
+        
+        .code-header + pre {
+            border-radius: 0 0 5px 5px;
+            margin-top: 0;
+        }
+        
+        code {
+            background: var(--code-bg);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+        }
+        
+        pre code {
+            background: none;
+            padding: 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        th {
+            background: var(--secondary);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        
+        td {
+            padding: 10px 15px;
+            border: 1px solid var(--border);
+        }
+        
+        tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .checklist li {
+            margin: 8px 0;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .checklist li::before {
+            content: "☐";
+            position: absolute;
+            left: 0;
+            color: var(--secondary);
+        }
+        
+        .numbered-steps {
+            counter-reset: step-counter;
+            list-style: none;
+            padding: 0;
+        }
+        
+        .numbered-steps li {
+            margin: 10px 0;
+            padding-left: 35px;
+            position: relative;
+        }
+        
+        .numbered-steps li::before {
+            counter-increment: step-counter;
+            content: counter(step-counter) ".";
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+            font-weight: bold;
+        }
+        
+        .version-table td:first-child {
+            font-weight: bold;
+        }
+        
+        .version-major { color: var(--warning); }
+        .version-minor { color: var(--accent); }
+        .version-patch { color: var(--success); }
+        
+        .quick-ref {
+            background: var(--light-bg);
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        
+        @media print {
+            body {
+                max-width: none;
+                padding: 0;
+            }
+            
+            .step-box, .tip-box, .warning-box {
+                break-inside: avoid;
+            }
+            
+            pre {
+                white-space: pre-wrap;
+                word-wrap: break-word;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            .title-page h1 {
+                font-size: 1.8em;
+            }
+            
+            pre {
+                font-size: 0.8em;
+            }
+            
+            table {
+                font-size: 0.9em;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Title Page -->
+<div class="title-page">
+    <p style="color: var(--secondary); font-size: 1.2em; margin: 0;">HANDS-ON LAB</p>
+    <h1 style="margin-top: 10px;">OpenTofu Module Workflow</h1>
+    <p class="subtitle">with Spacelift Registry</p>
+    <p class="workflow">Create → Publish → Consume → Update</p>
+    
+    <table class="meta-table">
+        <tr>
+            <td>Duration</td>
+            <td>90 - 120 minutes</td>
+        </tr>
+        <tr>
+            <td>Difficulty</td>
+            <td>Intermediate</td>
+        </tr>
+        <tr>
+            <td>Cloud Provider</td>
+            <td>AWS</td>
+        </tr>
+    </table>
+</div>
+
+<!-- Table of Contents -->
+<div class="toc">
+    <h2>📑 Table of Contents</h2>
+    <ul>
+        <li><a href="#section-1">Section 1: Lab Overview and Prerequisites</a></li>
+        <li><a href="#section-2">Section 2: Understanding the Module Lifecycle</a></li>
+        <li><a href="#section-3">Section 3: Create Your First Module</a></li>
+        <li><a href="#section-4">Section 4: Register Module in Spacelift</a></li>
+        <li><a href="#section-5">Section 5: Consume the Module in a Stack</a></li>
+        <li><a href="#section-6">Section 6: Update and Version the Module</a></li>
+        <li><a href="#section-7">Section 7: Verification and Testing</a></li>
+        <li><a href="#section-8">Section 8: Troubleshooting Guide</a></li>
+        <li><a href="#section-9">Section 9: Best Practices and Next Steps</a></li>
+        <li><a href="#quick-ref">Quick Reference Card</a></li>
+    </ul>
+</div>
+
+<!-- Section 1 -->
+<h1 id="section-1">Section 1: Lab Overview and Prerequisites</h1>
+
+<h2>1.1 Learning Objectives</h2>
+<p>By the end of this lab, you will be able to:</p>
+<ul class="checklist">
+    <li>Create a reusable OpenTofu module following best practices</li>
+    <li>Register and version modules in the Spacelift private registry</li>
+    <li>Consume private modules from the Spacelift registry in stacks</li>
+    <li>Update modules and manage version upgrades across consumers</li>
+    <li>Implement proper module versioning using semantic versioning</li>
+    <li>Configure module dependencies and stack relationships</li>
+</ul>
+
+<h2>1.2 Prerequisites</h2>
+
+<h3>Required Access</h3>
+<ol class="numbered-steps">
+    <li>Spacelift account with administrative access</li>
+    <li>GitHub account with repository creation permissions</li>
+    <li>AWS account with permissions to create S3 buckets</li>
+</ol>
+
+<h3>Required Tools</h3>
+<ol class="numbered-steps">
+    <li>Git CLI installed and configured</li>
+    <li>OpenTofu CLI (version 1.6.0 or later)</li>
+    <li>Text editor or IDE (VS Code recommended)</li>
+    <li>AWS CLI configured with valid credentials</li>
+</ol>
+
+<h3>Verify Your Environment</h3>
+<p>Run these commands to verify your setup:</p>
+
+<div class="code-header">Terminal</div>
+<pre><code># Verify OpenTofu
+tofu version
+# Expected: OpenTofu v1.6.0 or higher
+
+# Verify Git
+git --version
+
+# Verify AWS CLI
+aws sts get-caller-identity
+
+# Verify AWS permissions
+aws s3 ls</code></pre>
+
+<div class="tip-box">
+    <div class="title">💡 Environment Check</div>
+    If any command fails, resolve the issue before proceeding. All prerequisites must be met for successful lab completion.
+</div>
+
+<!-- Section 2 -->
+<h1 id="section-2">Section 2: Understanding the Module Lifecycle</h1>
+
+<h2>2.1 What is a Module?</h2>
+<p>A module is a container for multiple resources that are used together. Modules allow you to:</p>
+<ol class="numbered-steps">
+    <li>Encapsulate infrastructure patterns into reusable components</li>
+    <li>Standardize configurations across your organization</li>
+    <li>Reduce code duplication and maintenance overhead</li>
+    <li>Enforce best practices through pre-built configurations</li>
+</ol>
+
+<h2>2.2 The Module Workflow</h2>
+<p>This lab follows the complete module lifecycle:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Phase</th>
+            <th>Action</th>
+            <th>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>1</strong></td>
+            <td><strong>Create</strong></td>
+            <td>Build the module with proper structure and code</td>
+        </tr>
+        <tr>
+            <td><strong>2</strong></td>
+            <td><strong>Publish</strong></td>
+            <td>Register in Spacelift and create versioned releases</td>
+        </tr>
+        <tr>
+            <td><strong>3</strong></td>
+            <td><strong>Consume</strong></td>
+            <td>Reference the module from stacks with version pinning</td>
+        </tr>
+        <tr>
+            <td><strong>4</strong></td>
+            <td><strong>Update</strong></td>
+            <td>Modify module, release new version, update consumers</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>2.3 Spacelift Registry Benefits</h2>
+<p>The Spacelift private registry provides:</p>
+<ol class="numbered-steps">
+    <li>Private module hosting for your organization</li>
+    <li>Automatic version detection from Git tags</li>
+    <li>Integration with Spacelift stacks and policies</li>
+    <li>Module usage tracking and dependency management</li>
+    <li>Access control via Spacelift spaces and policies</li>
+</ol>
+
+<!-- Section 3 -->
+<h1 id="section-3">Section 3: Create Your First Module</h1>
+
+<div class="step-box">STEP 1: SET UP REPOSITORY STRUCTURE</div>
+
+<h2>3.1 Create the Repository</h2>
+<p>First, create a new GitHub repository for your modules:</p>
+<ol class="numbered-steps">
+    <li>Go to GitHub and create a new repository</li>
+    <li>Name it: <code>infrastructure-modules</code></li>
+    <li>Initialize with a README</li>
+    <li>Clone to your local machine</li>
+</ol>
+
+<div class="code-header">Terminal</div>
+<pre><code># Clone your repository
+git clone https://github.com/YOUR-ORG/infrastructure-modules.git
+cd infrastructure-modules
+
+# Create the module directory structure
+mkdir -p modules/s3-bucket</code></pre>
+
+<h2>3.2 Module Directory Structure</h2>
+<p>Create the following file structure for the S3 bucket module:</p>
+
+<div class="code-header">Directory Structure</div>
+<pre><code>infrastructure-modules/
+├── README.md
+└── modules/
+    └── s3-bucket/
+        ├── README.md
+        ├── versions.tf
+        ├── variables.tf
+        ├── main.tf
+        └── outputs.tf</code></pre>
+
+<div class="tip-box">
+    <div class="title">💡 Best Practice</div>
+    Always organize modules in a dedicated <code>modules/</code> directory. This allows you to host multiple modules in a single repository while keeping clear separation.
+</div>
+
+<div class="step-box">STEP 2: CREATE THE MODULE FILES</div>
+
+<h2>3.3 versions.tf</h2>
+<p>Define the required OpenTofu and provider versions:</p>
+
+<div class="code-header">modules/s3-bucket/versions.tf</div>
+<pre><code># modules/s3-bucket/versions.tf
+# Defines version constraints for OpenTofu and providers
+
+terraform {
+  required_version = ">= 1.6.0"
+  
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}</code></pre>
+
+<div class="warning-box">
+    <div class="title">⚠️ Important</div>
+    Do NOT include a provider block in modules. Provider configuration should be done by the consuming stack, not the module itself.
+</div>
+
+<h2>3.4 variables.tf</h2>
+<p>Define the input variables with descriptions, types, and validation:</p>
+
+<div class="code-header">modules/s3-bucket/variables.tf</div>
+<pre><code># modules/s3-bucket/variables.tf
+# Input variables for the S3 bucket module
+
+variable "bucket_name" {
+  description = "The name of the S3 bucket. Must be globally unique."
+  type        = string
+  
+  validation {
+    condition     = can(regex("^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$", var.bucket_name))
+    error_message = "Bucket name must be 3-63 characters, lowercase, and DNS-compliant."
+  }
+}
+
+variable "environment" {
+  description = "The deployment environment (dev, staging, prod)."
+  type        = string
+  default     = "dev"
+  
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "enable_versioning" {
+  description = "Enable versioning on the S3 bucket."
+  type        = bool
+  default     = true
+}
+
+variable "tags" {
+  description = "Additional tags to apply to the bucket."
+  type        = map(string)
+  default     = {}
+}</code></pre>
+
+<h2>3.5 main.tf</h2>
+<p>Implement the main resource configuration:</p>
+
+<div class="code-header">modules/s3-bucket/main.tf</div>
+<pre><code># modules/s3-bucket/main.tf
+# Main resource definitions for S3 bucket module
+
+locals {
+  common_tags = merge(
+    {
+      Environment = var.environment
+      ManagedBy   = "OpenTofu"
+      Module      = "s3-bucket"
+    },
+    var.tags
+  )
+}
+
+# Primary S3 Bucket
+resource "aws_s3_bucket" "this" {
+  bucket = var.bucket_name
+  tags   = local.common_tags
+}
+
+# Bucket Versioning Configuration
+resource "aws_s3_bucket_versioning" "this" {
+  bucket = aws_s3_bucket.this.id
+  
+  versioning_configuration {
+    status = var.enable_versioning ? "Enabled" : "Disabled"
+  }
+}
+
+# Block All Public Access (Security Best Practice)
+resource "aws_s3_bucket_public_access_block" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Server-Side Encryption Configuration
+resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
+  bucket = aws_s3_bucket.this.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+    bucket_key_enabled = true
+  }
+}</code></pre>
+
+<div class="tip-box">
+    <div class="title">💡 Security First</div>
+    This module implements security best practices by default: public access blocked, encryption enabled, and versioning available. These defaults protect your data from common misconfigurations.
+</div>
+
+<h2>3.6 outputs.tf</h2>
+<p>Define the module outputs for consumers:</p>
+
+<div class="code-header">modules/s3-bucket/outputs.tf</div>
+<pre><code># modules/s3-bucket/outputs.tf
+# Output values exposed by the module
+
+output "bucket_id" {
+  description = "The name of the bucket."
+  value       = aws_s3_bucket.this.id
+}
+
+output "bucket_arn" {
+  description = "The ARN of the bucket."
+  value       = aws_s3_bucket.this.arn
+}
+
+output "bucket_domain_name" {
+  description = "The bucket domain name."
+  value       = aws_s3_bucket.this.bucket_domain_name
+}
+
+output "bucket_regional_domain_name" {
+  description = "The bucket region-specific domain name."
+  value       = aws_s3_bucket.this.bucket_regional_domain_name
+}</code></pre>
+
+<h2>3.7 Module README.md</h2>
+<p>Create documentation for module consumers:</p>
+
+<div class="code-header">modules/s3-bucket/README.md</div>
+<pre><code># S3 Bucket Module
+
+Creates a secure S3 bucket with encryption and versioning.
+
+## Usage
+
+```hcl
+module "my_bucket" {
+  source  = "spacelift.io/YOUR-ACCOUNT/s3-bucket/aws"
+  version = "1.0.0"
+
+  bucket_name = "my-application-data"
+  environment = "prod"
+}
+```
+
+## Inputs
+
+| Name | Description | Type | Default | Required |
+|------|-------------|------|---------|----------|
+| bucket_name | The S3 bucket name | string | n/a | yes |
+| environment | Deployment environment | string | "dev" | no |
+| enable_versioning | Enable bucket versioning | bool | true | no |
+| tags | Additional tags | map(string) | {} | no |
+
+## Outputs
+
+| Name | Description |
+|------|-------------|
+| bucket_id | The bucket name |
+| bucket_arn | The bucket ARN |</code></pre>
+
+<div class="step-box">STEP 3: COMMIT AND PUSH</div>
+
+<h2>3.8 Validate and Commit</h2>
+<p>Validate the module and push to GitHub:</p>
+
+<div class="code-header">Terminal</div>
+<pre><code># Navigate to module directory
+cd modules/s3-bucket
+
+# Initialize and validate
+tofu init
+tofu validate
+
+# Expected output:
+# Success! The configuration is valid.
+
+# Return to repository root and commit
+cd ../..
+git add .
+git commit -m "Add s3-bucket module with security defaults"
+git push origin main</code></pre>
+
+<h2>3.9 Verification Checklist</h2>
+<p>Before proceeding, verify:</p>
+<ul class="checklist">
+    <li>All files created in correct locations</li>
+    <li><code>tofu validate</code> passes without errors</li>
+    <li>Code pushed to GitHub successfully</li>
+    <li>Repository visible in GitHub</li>
+</ul>
+
+<!-- Section 4 -->
+<h1 id="section-4">Section 4: Register Module in Spacelift</h1>
+
+<div class="step-box">STEP 4: CONNECT REPOSITORY TO SPACELIFT</div>
+
+<h2>4.1 Prerequisites Check</h2>
+<p>Before registering the module, ensure:</p>
+<ol class="numbered-steps">
+    <li>Your GitHub repository is connected to Spacelift</li>
+    <li>You have admin access to your Spacelift account</li>
+    <li>The module code is pushed to the main branch</li>
+</ol>
+
+<h2>4.2 Option A: Register via Spacelift UI</h2>
+<p>Follow these steps to register the module through the web interface:</p>
+
+<h3>Step 4.2.1: Navigate to Modules</h3>
+<ol class="numbered-steps">
+    <li>Log in to your Spacelift account</li>
+    <li>Click on "Modules" in the left navigation</li>
+    <li>Click the "Create Module" button</li>
+</ol>
+
+<h3>Step 4.2.2: Configure Module Settings</h3>
+<p>Fill in the module configuration:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Field</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><strong>Name</strong></td>
+            <td>s3-bucket</td>
+        </tr>
+        <tr>
+            <td><strong>Provider</strong></td>
+            <td>aws</td>
+        </tr>
+        <tr>
+            <td><strong>Repository</strong></td>
+            <td>infrastructure-modules</td>
+        </tr>
+        <tr>
+            <td><strong>Branch</strong></td>
+            <td>main</td>
+        </tr>
+        <tr>
+            <td><strong>Project Root</strong></td>
+            <td>modules/s3-bucket</td>
+        </tr>
+    </tbody>
+</table>
+
+<p>4. Click "Create Module" to save</p>
+
+<h2>4.3 Option B: Register via OpenTofu (Admin Stack)</h2>
+<p>Alternatively, manage modules as code using an administrative stack:</p>
+
+<div class="code-header">admin/modules.tf</div>
+<pre><code># admin/modules.tf
+# Module registration via OpenTofu
+
+resource "spacelift_module" "s3_bucket" {
+  name        = "s3-bucket"
+  description = "Secure S3 bucket with encryption and versioning"
+  
+  # Repository configuration
+  repository   = "infrastructure-modules"
+  branch       = "main"
+  project_root = "modules/s3-bucket"
+  
+  # Provider for registry namespace
+  terraform_provider = "aws"
+  
+  # Optional: Enable sharing across spaces
+  administrative = false
+  
+  # Labels for organization
+  labels = ["aws", "storage", "security"]
+  
+  # Optional: Protect from accidental deletion
+  protect_from_deletion = true
+}</code></pre>
+
+<div class="tip-box">
+    <div class="title">💡 Infrastructure as Code</div>
+    Managing module registrations via OpenTofu provides version control, audit trails, and automated management of your module registry.
+</div>
+
+<div class="step-box">STEP 5: CREATE THE FIRST VERSION</div>
+
+<h2>4.4 Understanding Version Tags</h2>
+<p>Spacelift detects module versions from Git tags. The tag format depends on your repository structure:</p>
+
+<table>
+    <thead>
+        <tr>
+            <th>Repository Type</th>
+            <th>Tag Format</th>
+            <th>Example</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Multi-module repo</td>
+            <td><code>module-name/vX.Y.Z</code></td>
+            <td><code>s3-bucket/v1.0.0</code></td>
+        </tr>
+        <tr>
+            <td>Single-module repo</td>
+            <td><code>vX.Y.Z</code></td>
+            <td><code>v1.0.0</code></td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>4.5 Create Version 1.0.0</h2>
+<p>Create and push the first version tag:</p>
+
+<div class="code-header">Terminal</div>
+<pre><code># Ensure you're on main branch with latest changes
+git checkout main
+git pull origin main
+
+# Create the version tag
+# Format: module-name/vX.Y.Z for multi-module repos
+git tag s3-bucket/v1.0.0
+
+# Push the tag to GitHub
+git push origin s3-bucket/v1.0.0
+
+# Verify the tag was created
+git tag -l "s3-bucket/*"
+# Expected: s3-bucket/v1.0.0</code></pre>
+
+<h2>4.6 Verify in Spacelift</h2>
+<ol class="numbered-steps">
+    <li>Navigate to Modules in Spacelift</li>
+    <li>Click on the "s3-bucket" module</li>
+    <li>Verify version 1.0.0 appears in the versions list</li>
+    <li>Note the module source address shown</li>
+</ol>
+
+<p>Your module source address will be:</p>
+
+<div class="code-header">Module Source</div>
+<pre><code>spacelift.io/YOUR-ACCOUNT/s3-bucket/aws</code></pre>
+
+<div class="warning-box">
+    <div class="title">⚠️ Version Not Appearing?</div>
+    If the version doesn't appear within 2 minutes, check: (1) The tag format matches <code>module-name/vX.Y.Z</code>, (2) The repository is correctly connected, (3) The <code>project_root</code> path is correct.
+</div>
+
+<!-- Section 5 -->
+<h1 id="section-5">Section 5: Consume the Module in a Stack</h1>
+
+<div class="step-box">STEP 6: CREATE A CONSUMING STACK</div>
+
+<h2>5.1 Repository Structure</h2>
+<p>Create a new repository or directory for your infrastructure deployment:</p>
+
+<div class="code-header">Directory Structure</div>
+<pre><code>infrastructure-live/
+├── README.md
+└── stacks/
+    └── app-storage/
+        ├── versions.tf
+        ├── variables.tf
+        ├── main.tf
+        ├── outputs.tf
+        └── providers.tf</code></pre>
+
+<h2>5.2 Create the Stack Files</h2>
+
+<h3>versions.tf</h3>
+<div class="code-header">stacks/app-storage/versions.tf</div>
+<pre><code># stacks/app-storage/versions.tf
+
+terraform {
+  required_version = ">= 1.6.0"
+}</code></pre>
+
+<h3>providers.tf</h3>
+<div class="code-header">stacks/app-storage/providers.tf</div>
+<pre><code># stacks/app-storage/providers.tf
+
+provider "aws" {
+  region = var.aws_region
+  
+  default_tags {
+    tags = {
+      Project     = "app-storage"
+      Environment = var.environment
+      ManagedBy   = "OpenTofu-Spacelift"
+    }
+  }
+}</code></pre>
+
+<h3>variables.tf</h3>
+<div class="code-header">stacks/app-storage/variables.tf</div>
+<pre><code># stacks/app-storage/variables.tf
+
+variable "environment" {
+  description = "Deployment environment"
+  type        = string
+  default     = "dev"
+}
+
+variable "aws_region" {
+  description = "AWS region for resources"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "project_name" {
+  description = "Name of the project"
+  type        = string
+  default     = "myapp"
+}</code></pre>
+
+<h3>main.tf - Using the Private Module</h3>
+<div class="code-header">stacks/app-storage/main.tf</div>
+<pre><code># stacks/app-storage/main.tf
+
+# Application Data Bucket
+module "app_data_bucket" {
+  # Source from Spacelift private registry
+  source  = "spacelift.io/YOUR-ACCOUNT/s3-bucket/aws"
+  version = "1.0.0"  # Always pin to specific version
+
+  bucket_name       = "${var.project_name}-data-${var.environment}"
+  environment       = var.environment
+  enable_versioning = true
+  
+  tags = {
+    Purpose = "Application Data"
+  }
+}
+
+# Application Logs Bucket
+module "app_logs_bucket" {
+  source  = "spacelift.io/YOUR-ACCOUNT/s3-bucket/aws"
+  version = "1.0.0"
+
+  bucket_name       = "${var.project_name}-logs-${var.environment}"
+  environment       = var.environment
+  enable_versioning = false  # Logs don't need versioning
+  
+  tags = {
+    Purpose = "Application Logs"
+  }
+}
+
+# Backup Bucket
+module "backup_bucket" {
+  source  = "spacelift.io/YOUR-ACCOUNT/s3-bucket/aws"
+  version = "1.0.0"
+
+  bucket_name       = "${var.project_name}-backups-${var.environment}"
+  environment       = var.environment
+  enable_versioning = true
+  
+  tags = {
+    Purpose   = "Backups"
+    Retention = "30-days"
+  }
+}</code></pre>
+
+<div class="warning-box">
+    <div class="title">⚠️ Replace YOUR-ACCOUNT</div>
+    Replace <code>YOUR-ACCOUNT</code> with your actual Spacelift account name. You can find this in the module details page in Spacelift.
+</div>
+
+<h3>outputs.tf</h3>
+<div class="code-header">stacks/app-storage/outputs.tf</div>
+<pre><code># stacks/app-storage/outputs.tf
+
+output "data_bucket_id" {
+  description = "ID of the application data bucket"
+  value       = module.app_data_bucket.bucket_id
+}
+
+output "data_bucket_arn" {
+  description = "ARN of the application data bucket"
+  value       = module.app_data_bucket.bucket_arn
+}
+
+output "logs_bucket_id" {
+  description = "ID of the logs bucket"
+  value       = module.app_logs_bucket.bucket_id
+}
+
+output "backup_bucket_id" {
+  description = "ID of the backup bucket"
+  value       = module.backup_bucket.bucket_id
+}
+
+output "all_bucket_arns" {
+  description = "ARNs of all created buckets"
+  value = {
+    data    = module.app_data_bucket.bucket_arn
+    logs    = module.app_logs_bucket.bucket_arn
+    backups = module.backup_bucket.bucket_arn
+  }
+}</code></pre>
+
+<div class="step-box">STEP 7: REGISTER THE STACK IN SPACELIFT</div>
+
+<h2>5.3 Create Stack via UI</h2>
+<ol class="numbered-steps">
+    <li>Navigate to Stacks in Spacelift</li>
+    <li>Click "Create Stack"</li>
+    <li>Configure the following settings:</li>
+</ol>
+
+<table>
+    <thead>
+        <tr>
+            <th>Setting</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Name</td>
+            <td>app-storage-dev</td>
+        </tr>
+        <tr>
+            <td>Repository</td>
+            <td>infrastructure-live</td>
+        </tr>
+        <tr>
+            <td>Branch</td>
+            <td>main</td>
+        </tr>
+        <tr>
+            <td>Project Root</td>
+            <td>stacks/app-storage</td>
+        </tr>
+        <tr>
+            <td>Manage State</td>
+            <td>Enabled</td>
+        </tr>
+    </tbody>
+</table>
+
+<h2>5.4 Configure Environment Variables</h2>
+<p>Add required environment variables to the stack:</p>
+<ol class="numbered-steps">
+    <li>Go to the stack settings</li>
+    <li>Navigate to Environment</li>
+    <li>Add the following variables:</li>
+</ol>
+
+<div class="code-header">Environment Variables</div>
+<pre><code>TF_VAR_environment = "dev"
+TF_VAR_aws_region = "us-east-1"
+TF_VAR_project_name = "myapp"</code></pre>
+
+<h2>5.5 Configure AWS Integration</h2>
+<p>Attach your AWS cloud integration to the stack:</p>
+<ol class="numbered-steps">
+    <li>Go to stack settings</li>
+    <li>Navigate to "Cloud Integrations"</li>
+    <li>Attach your AWS integration</li>
+    <li>Ensure the IAM role has S3 permissions</li>
+</ol>
+
+<div class="step-box">STEP 8: TRIGGER AND VERIFY DEPLOYMENT</div>
+
+<h2>5.6 Trigger the Stack</h2>
+<ol class="numbered-steps">
+    <li>Navigate to your stack in Spacelift</li>
+    <li>Click "Trigger" to start a run</li>
+    <li>Review the plan output</li>
+    <li>Confirm and apply the changes</li>
+</ol>
+
+<h2>5.7 Expected Plan Output</h2>
+<p>You should see resources being created:</p>
+
+<div class="code-header">Plan Output</div>
+<pre><code># Example plan output
+Plan: 12 to add, 0 to change, 0 to destroy.
+
+  # module.app_data_bucket.aws_s3_bucket.this will be created
+  + resource "aws_s3_bucket" "this" {
+      + bucket = "myapp-data-dev"
+      ...
+    }
+    
+  # module.app_data_bucket.aws_s3_bucket_versioning.this will be created
+  # module.app_data_bucket.aws_s3_bucket_public_access_block.this will be created
+  # module.app_data_bucket.aws_s3_bucket_server_side_encryption_configuration.this will be created
+  
+  # (similar resources for logs and backup buckets)</code></pre>
+
+<h2>5.8 Verify Deployment</h2>
+<p>After successful apply:</p>
+<ol class="numbered-steps">
+    <li>Check the Spacelift run output for success</li>
+    <li>Verify outputs are displayed</li>
+    <li>Confirm buckets exist in AWS console</li>
+</ol>
+
+<div class="code-header">Terminal</div>
+<pre><code># Verify via AWS CLI
+aws s3 ls | grep myapp
+
+# Expected output:
+# 2024-01-15 10:30:00 myapp-data-dev
+# 2024-01-15 10:30:00 myapp-logs-dev
+# 2024-01-15 10:30:00 myapp-backups-dev</code></pre>
+
+<!-- Section 6 -->
+<h1 id="section-6">Section 6: Update and Version the Module</h1>
+
+<div class="step-box">STEP 9: ENHANCE THE MODULE</div>
+
+<h2>6.1 Add New Feature</h2>
+<p>Let's add lifecycle rules to the module for automatic object expiration:</p>
+
+<div class="code-header">modules/s3-bucket/variables.tf (addition)</div>
+<pre><code># Add to modules/s3-bucket/variables.tf
+
+variable "lifecycle_rules" {
+  description = "Lifecycle rules for the bucket"
+  type = list(object({
+    id                         = string
+    enabled                    = bool
+    prefix                     = optional(string, "")
+    expiration_days            = optional(number, null)
+    noncurrent_expiration_days = optional(number, null)
+  }))
+  default = []
+}</code></pre>
+
+<div class="code-header">modules/s3-bucket/main.tf (addition)</div>
+<pre><code># Add to modules/s3-bucket/main.tf
+
+# Lifecycle Configuration (only if rules are defined)
+resource "aws_s3_bucket_lifecycle_configuration" "this" {
+  count  = length(var.lifecycle_rules) > 0 ? 1 : 0
+  bucket = aws_s3_bucket.this.id
+
+  dynamic "rule" {
+    for_each = var.lifecycle_rules
+    content {
+      id     = rule.value.id
+      status = rule.value.enabled ? "Enabled" : "Disabled"
+
+      filter {
+        prefix = rule.value.prefix
+      }
+
+      dynamic "expiration" {
+        for_each = rule.value.expiration_days != null ? [1] : []
+        content {
+          days = rule.value.expiration_days
+        }
+      }
+
+      dynamic "noncurrent_version_expiration" {
+        for_each = rule.value.noncurrent_expiration_days != null ? [1] : []
+        content {
+          noncurrent_days = rule.value.noncurrent_expiration_days
+        }
+      }
+    }
+  }
+}</code></pre>
+
+<div class="step-box">STEP 10: RELEASE NEW VERSION</div>
+
+<h2>6.2 Commit and Tag</h2>
+<p>Commit the changes and create a new version:</p>
+
+<div class="code-header">Terminal</div>
+<pre><code># Commit changes
+cd infrastructure-modules
+git add .
+git commit -m "Add lifecycle rules support to s3-bucket module"
+git push origin main
+
+# Create new version tag (minor version bump)
+git tag s3-bucket/v1.1.0
+git push origin s3-bucket/v1.1.0
+
+# Verify tags
+git tag -l "s3-bucket/*"
+# Expected:
+# s3-bucket/v1.0.0
+# s3-bucket/v1.1.0</code></pre>
+
+<h2>6.3 Semantic Versioning Guide</h2>
+<p>Follow semantic versioning for module releases:</p>
+
+<table class="version-table">
+    <thead>
+        <tr>
+            <th>Version</th>
+            <th>When to Use</th>
+            <th>Example Changes</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td class="version-major">MAJOR</td>
+            <td>Breaking changes</td>
+            <td>Removed variables, renamed outputs</td>
+        </tr>
+        <tr>
+            <td class="version-minor">MINOR</td>
+            <td>New features (backward compatible)</td>
+            <td>New optional variables, new outputs</td>
+        </tr>
+        <tr>
+            <td class="version-patch">PATCH</td>
+            <td>Bug fixes only</td>
+            <td>Fixed validation, corrected defaults</td>
+        </tr>
+    </tbody>
+</table>
+
+<div class="tip-box">
+    <div class="title">💡 Version Strategy</div>
+    Adding new optional variables with defaults is a MINOR version change (v1.0.0 → v1.1.0) because existing consumers continue to work without modification.
+</div>
+
+<div class="step-box">STEP 11: UPDATE CONSUMERS</div>
+
+<h2>6.4 Update Stack to Use New Version</h2>
+<p>Update the consuming stack to use the new module version:</p>
+
+<div class="code-header">stacks/app-storage/main.tf (updated)</div>
+<pre><code># stacks/app-storage/main.tf (updated)
+
+module "app_logs_bucket" {
+  source  = "spacelift.io/YOUR-ACCOUNT/s3-bucket/aws"
+  version = "1.1.0"  # Updated from 1.0.0
+
+  bucket_name       = "${var.project_name}-logs-${var.environment}"
+  environment       = var.environment
+  enable_versioning = false
+  
+  # NEW: Use lifecycle rules to expire old logs
+  lifecycle_rules = [
+    {
+      id              = "expire-old-logs"
+      enabled         = true
+      prefix          = ""
+      expiration_days = 90
+    }
+  ]
+  
+  tags = {
+    Purpose = "Application Logs"
+  }
+}</code></pre>
+
+<h2>6.5 Deploy the Update</h2>
+
+<div class="code-header">Terminal</div>
+<pre><code># Commit and push changes
+cd infrastructure-live
+git add .
+git commit -m "Update s3-bucket module to v1.1.0, add log retention"
+git push origin main
+
+# Spacelift will automatically detect changes and trigger a run
+# (if autodeploy is enabled)</code></pre>
+
+<h2>6.6 Version Constraints</h2>
+<p>You can use version constraints for flexibility:</p>
+
+<div class="code-header">Version Constraints</div>
+<pre><code># Exact version (recommended for production)
+version = "1.1.0"
+
+# Pessimistic constraint (allows patch updates)
+version = "~> 1.1.0"  # Allows 1.1.x but not 1.2.0
+
+# Range constraint (use with caution)
+version = ">= 1.1.0, < 2.0.0"</code></pre>
+
+<div class="warning-box">
+    <div class="title">⚠️ Production Best Practice</div>
+    Always use exact version pinning in production environments. This prevents unexpected changes when new module versions are released.
+</div>
+
+<!-- Section 7 -->
+<h1 id="section-7">Section 7: Verification and Testing</h1>
+
+<h2>7.1 Module Testing Checklist</h2>
+<p>Before releasing a new module version, verify:</p>
+<ul class="checklist">
+    <li><code>tofu validate</code> passes without errors</li>
+    <li><code>tofu fmt</code> shows no formatting issues</li>
+    <li>All variables have descriptions and types</li>
+    <li>All outputs have descriptions</li>
+    <li>README.md is updated with new features</li>
+    <li>CHANGELOG.md documents changes</li>
+</ul>
+
+<h2>7.2 Local Testing</h2>
+<p>Test the module locally before pushing:</p>
+
+<div class="code-header">Terminal</div>
+<pre><code># Create a test directory
+mkdir -p test/s3-bucket
+cd test/s3-bucket
+
+# Create test configuration
+cat > main.tf << 'EOF'
+provider "aws" {
+  region = "us-east-1"
+}
+
+module "test_bucket" {
+  source = "../../modules/s3-bucket"
+  
+  bucket_name = "test-bucket-${random_id.suffix.hex}"
+  environment = "test"
+  
+  lifecycle_rules = [
+    {
+      id              = "test-rule"
+      enabled         = true
+      expiration_days = 30
+    }
+  ]
+}
+
+resource "random_id" "suffix" {
+  byte_length = 4
+}
+
+output "bucket_id" {
+  value = module.test_bucket.bucket_id
+}
+EOF
+
+# Initialize and plan
+tofu init
+tofu plan
+
+# Apply (optional - creates real resources)
+tofu apply -auto-approve
+
+# Cleanup
+tofu destroy -auto-approve</code></pre>
+
+<h2>7.3 Spacelift Module Tests</h2>
+<p>Configure automated tests in Spacelift:</p>
+
+<div class="code-header">Module Testing Configuration</div>
+<pre><code># In module settings, add test cases
+resource "spacelift_module" "s3_bucket" {
+  name = "s3-bucket"
+  # ... other config ...
+  
+  # Enable test runs on PR
+  workflow_tool = "OPEN_TOFU"
+}
+
+# Create a test stack that uses the module
+resource "spacelift_stack" "module_test" {
+  name         = "s3-bucket-test"
+  repository   = "infrastructure-modules"
+  branch       = "main"
+  project_root = "test/s3-bucket"
+  
+  labels = ["test", "module-validation"]
+}</code></pre>
+
+<!-- Section 8 -->
+<h1 id="section-8">Section 8: Troubleshooting Guide</h1>
+
+<h2>8.1 Module Not Found</h2>
+<p><strong>Symptom:</strong> <code>Error: Module not found</code> when running <code>tofu init</code></p>
+
+<div class="code-header">Error</div>
+<pre><code>Error: Failed to query available provider packages
+
+Could not retrieve the list of available versions for module
+"spacelift.io/your-account/s3-bucket/aws"</code></pre>
+
+<p><strong>Solutions:</strong></p>
+<ol class="numbered-steps">
+    <li>Verify the module exists in Spacelift Modules section</li>
+    <li>Check the module source path is correct</li>
+    <li>Ensure at least one version is published</li>
+    <li>Verify you have access to the module's space</li>
+</ol>
+
+<h2>8.2 Version Not Found</h2>
+<p><strong>Symptom:</strong> Specified version doesn't exist</p>
+
+<div class="code-header">Error</div>
+<pre><code>Error: No available version matches the given constraints</code></pre>
+
+<p><strong>Solutions:</strong></p>
+<ol class="numbered-steps">
+    <li>Check available versions in Spacelift module details</li>
+    <li>Verify the tag format matches: <code>module-name/vX.Y.Z</code></li>
+    <li>Ensure the tag was pushed to GitHub</li>
+    <li>Wait 2-3 minutes for Spacelift to detect new tags</li>
+</ol>
+
+<h2>8.3 Authentication Errors</h2>
+<p><strong>Symptom:</strong> 401 Unauthorized when fetching module</p>
+
+<p><strong>Solutions:</strong></p>
+<ol class="numbered-steps">
+    <li>Verify the stack has proper Spacelift context</li>
+    <li>Check the stack is in the correct space</li>
+    <li>Ensure module sharing is configured if cross-space</li>
+</ol>
+
+<h2>8.4 Tag Not Detected</h2>
+<p><strong>Symptom:</strong> Pushed tag but version not appearing in Spacelift</p>
+
+<p><strong>Diagnostic Steps:</strong></p>
+
+<div class="code-header">Terminal</div>
+<pre><code># Verify tag exists in GitHub
+git ls-remote --tags origin | grep s3-bucket
+
+# Check tag format (must be exact)
+# Correct: s3-bucket/v1.0.0
+# Wrong:   s3-bucket-v1.0.0
+# Wrong:   S3-Bucket/v1.0.0
+# Wrong:   v1.0.0 (for multi-module repos)</code></pre>
+
+<p><strong>Solutions:</strong></p>
+<ol class="numbered-steps">
+    <li>Delete and recreate with correct format</li>
+    <li>Verify the tag points to the correct commit</li>
+    <li>Check webhook delivery in GitHub settings</li>
+</ol>
+
+<div class="code-header">Terminal</div>
+<pre><code># Delete incorrect tag
+git tag -d wrong-tag
+git push origin --delete wrong-tag
+
+# Create correct tag
+git tag s3-bucket/v1.0.0
+git push origin s3-bucket/v1.0.0</code></pre>
+
+<h2>8.5 Plan Shows No Changes</h2>
+<p><strong>Symptom:</strong> Updated module version but plan shows no changes</p>
+
+<p><strong>Solutions:</strong></p>
+<ol class="numbered-steps">
+    <li>Run <code>tofu init -upgrade</code> to fetch new version</li>
+    <li>Clear <code>.terraform</code> directory and reinitialize</li>
+    <li>Verify version is actually changed in source</li>
+</ol>
+
+<div class="code-header">Terminal</div>
+<pre><code># Force module update
+tofu init -upgrade
+
+# Or clean and reinitialize
+rm -rf .terraform .terraform.lock.hcl
+tofu init</code></pre>
+
+<!-- Section 9 -->
+<h1 id="section-9">Section 9: Best Practices and Next Steps</h1>
+
+<h2>9.1 Module Design Best Practices</h2>
+
+<h3>Structure</h3>
+<ol class="numbered-steps">
+    <li>Use consistent file naming: <code>versions.tf</code>, <code>variables.tf</code>, <code>main.tf</code>, <code>outputs.tf</code></li>
+    <li>Keep modules focused on a single responsibility</li>
+    <li>Provide sensible defaults for optional variables</li>
+    <li>Include comprehensive documentation in README</li>
+</ol>
+
+<h3>Security</h3>
+<ol class="numbered-steps">
+    <li>Enable encryption by default where applicable</li>
+    <li>Block public access unless explicitly required</li>
+    <li>Use least-privilege IAM permissions</li>
+    <li>Validate inputs to prevent misconfigurations</li>
+</ol>
+
+<h3>Versioning</h3>
+<ol class="numbered-steps">
+    <li>Always use semantic versioning</li>
+    <li>Document breaking changes in CHANGELOG</li>
+    <li>Test thoroughly before releasing major versions</li>
+    <li>Consider deprecation warnings before removing features</li>
+</ol>
+
+<h2>9.2 Consumer Best Practices</h2>
+<ol class="numbered-steps">
+    <li>Pin to exact versions in production</li>
+    <li>Use version ranges only in development</li>
+    <li>Review module changes before upgrading</li>
+    <li>Test upgrades in non-production first</li>
+</ol>
+
+<h2>9.3 Recommended Next Steps</h2>
+<p>Continue your learning with these advanced topics:</p>
+<ul class="checklist">
+    <li>Create a VPC module with networking best practices</li>
+    <li>Implement module composition (modules calling modules)</li>
+    <li>Add OPA policies to validate module usage</li>
+    <li>Set up automated testing with Spacelift test stacks</li>
+    <li>Configure module dependencies and triggers</li>
+    <li>Implement cross-space module sharing</li>
+</ul>
+
+<div class="tip-box">
+    <div class="title">💡 Congratulations!</div>
+    You have completed the OpenTofu Module Workflow lab. You now know how to create, publish, consume, and update modules using the Spacelift private registry.
+</div>
+
+<!-- Quick Reference -->
+<h1 id="quick-ref">Quick Reference Card</h1>
+
+<div class="quick-ref">
+    <h2>Essential Commands</h2>
+    
+    <div class="code-header">Commands</div>
+    <pre><code># Module Development
+tofu init                    # Initialize module
+tofu validate                # Validate configuration
+tofu fmt -recursive          # Format all files
+
+# Version Management
+git tag module-name/v1.0.0   # Create version tag
+git push origin --tags       # Push all tags
+git tag -l "module-name/*"   # List module versions
+
+# Consumer Updates
+tofu init -upgrade           # Fetch latest module version
+tofu plan                    # Preview changes
+tofu apply                   # Apply changes</code></pre>
+    
+    <h2>Module Source Formats</h2>
+    
+    <div class="code-header">Source Formats</div>
+    <pre><code># Spacelift Private Registry
+source  = "spacelift.io/ACCOUNT/MODULE/PROVIDER"
+version = "1.0.0"
+
+# GitHub (direct)
+source = "github.com/org/repo//path/to/module?ref=v1.0.0"
+
+# Local (development only)
+source = "../../modules/s3-bucket"</code></pre>
+    
+    <h2>Key URLs</h2>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Resource</th>
+                <th>URL</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Spacelift Docs</td>
+                <td><a href="https://docs.spacelift.io">https://docs.spacelift.io</a></td>
+            </tr>
+            <tr>
+                <td>OpenTofu Docs</td>
+                <td><a href="https://opentofu.org/docs">https://opentofu.org/docs</a></td>
+            </tr>
+            <tr>
+                <td>AWS Provider</td>
+                <td><a href="https://registry.terraform.io/providers/hashicorp/aws">https://registry.terraform.io/providers/hashicorp/aws</a></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<hr>
+
+<p style="text-align: center; color: #666; margin-top: 40px;">
+    <em>This training material is provided for educational purposes.</em>
+</p>
+
+</body>
+</html>
